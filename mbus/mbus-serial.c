@@ -21,6 +21,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <sys/select.h>
+
 #include "mbus-serial.h"
 #include "mbus-protocol-aux.h"
 #include "mbus-protocol.h"
@@ -281,6 +283,8 @@ mbus_serial_recv_frame(mbus_handle *handle, mbus_frame *frame)
     char buff[PACKET_BUFF_SIZE];
     int remaining, timeouts;
     ssize_t len, nread;
+    fd_set rfds;
+    struct timeval tv;
 
     if (handle == NULL || frame == NULL)
     {
@@ -310,6 +314,13 @@ mbus_serial_recv_frame(mbus_handle *handle, mbus_frame *frame)
             // avoid out of bounds access
             return MBUS_RECV_RESULT_ERROR;
         }
+
+        // Wait for data to arrive
+        FD_ZERO(&rfds);
+        FD_SET(handle->fd, &rfds);
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+        select(handle->fd + 1, &rfds, NULL, NULL, &tv);
 
         //printf("%s: Attempt to read %d bytes [len = %d]\n", __PRETTY_FUNCTION__, remaining, len);
 
